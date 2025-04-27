@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo da Velha</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #4CAF50;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .cell {
+            width: 100px;
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5em;
+            background-color: #fff;
+            border: 2px solid #bbb;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+        .cell:hover {
+            background-color: #f0f0f0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        .cell.taken {
+            cursor: not-allowed;
+        }
+        .button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1.2em;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        .score {
+            font-size: 1.5em;
+            margin: 10px 0;
+        }
+        .score span {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        footer {
+            margin-top: 30px;
+            font-size: 1em;
+            color: #333;
+        }
+        footer a {
+            color: #4CAF50;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+        footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <h1>Jogo da Velha</h1>
+    <div class="score">Placar: Jogador <span id="player-score">0</span> - Máquina <span id="bot-score">0</span></div>
+    <div class="board" id="board"></div>
+    <button class="button" onclick="resetGame()">Reiniciar</button>
+    <script>
+        const board = document.getElementById("board");
+        let cells = [];
+        let currentPlayer = "X";
+        let playerScore = 0;
+        let botScore = 0;
+
+        function createBoard() {
+            board.innerHTML = "";
+            cells = [];
+            for (let i = 0; i < 9; i++) {
+                let cell = document.createElement("div");
+                cell.classList.add("cell");
+                cell.dataset.index = i;
+                cell.addEventListener("click", playerMove);
+                board.appendChild(cell);
+                cells.push(cell);
+            }
+        }
+
+        function playerMove(event) {
+            let cell = event.target;
+            if (!cell.textContent) {
+                cell.textContent = "X";
+                cell.classList.add("taken");
+                if (!checkWin("X")) {
+                    setTimeout(botMove, 500);
+                }
+            }
+        }
+
+        function botMove() {
+            let bestMove = getBestMove();
+            if (bestMove) {
+                bestMove.textContent = "O";
+                bestMove.classList.add("taken");
+                checkWin("O");
+            }
+        }
+
+        function getBestMove() {
+            const winningCombinations = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8],
+                [0, 3, 6], [1, 4, 7], [2, 5, 8],
+                [0, 4, 8], [2, 4, 6]
+            ];
+            
+            // Checa se a IA pode vencer
+            for (let combination of winningCombinations) {
+                let move = findWinningMove(combination, "O");
+                if (move) return move;
+            }
+            
+            // Checa se o jogador pode vencer e bloqueia
+            for (let combination of winningCombinations) {
+                let move = findWinningMove(combination, "X");
+                if (move) return move;
+            }
+            
+            // Se não tiver vitória ou defesa, joga aleatoriamente
+            let emptyCells = cells.filter(cell => !cell.textContent);
+            return emptyCells.length ? emptyCells[Math.floor(Math.random() * emptyCells.length)] : null;
+        }
+
+        function findWinningMove(combination, player) {
+            let marks = combination.map(index => cells[index].textContent);
+            let emptyIndex = marks.indexOf("");
+            if (marks.filter(mark => mark === player).length === 2 && emptyIndex !== -1) {
+                return cells[combination[emptyIndex]];
+            }
+            return null;
+        }
+
+        function checkWin(player) {
+            const winningCombinations = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8],
+                [0, 3, 6], [1, 4, 7], [2, 5, 8],
+                [0, 4, 8], [2, 4, 6]
+            ];
+            for (let combination of winningCombinations) {
+                let [a, b, c] = combination;
+                if (cells[a].textContent === player && cells[b].textContent === player && cells[c].textContent === player) {
+                    setTimeout(() => {
+                        alert(`${player} venceu!`);
+                        if (player === "X") {
+                            playerScore++;
+                        } else {
+                            botScore++;
+                        }
+                        updateScore();
+                        resetGame();
+                    }, 100);
+                    return true;
+                }
+            }
+            if (cells.every(cell => cell.textContent)) {
+                setTimeout(() => {
+                    alert("Empate!");
+                    resetGame();
+                }, 100);
+                return true;
+            }
+            return false;
+        }
+
+        function updateScore() {
+            document.getElementById("player-score").textContent = playerScore;
+            document.getElementById("bot-score").textContent = botScore;
+        }
+
+        function resetGame() {
+            createBoard();
+        }
+
+        createBoard();
+    </script>
+
+    <footer>
+        <p>Desenvolvido por Junior Diego Silva dos Santos - 2025</p>
+        <p>
+            <a href="https://www.linkedin.com/in/junior-santos-9b930b211" target="_blank" style="color: rgb(255, 0, 191); text-decoration: none;">LinkedIn</a> |
+            <a href="https://github.com/junior670" target="_blank" style="color: rgb(255, 0, 191); text-decoration: none;">GitHub</a> |
+            <a href="https://www.instagram.com/junior670" target="_blank" style="color: rgb(255, 0, 191); text-decoration: none;">Instagram</a> |
+            <a href="https://www.dio.me/users/diegojr09" target="_blank" style="color: rgb(255, 0, 191); text-decoration: none;">Perfil Público.Dio</a> |
+            <a href="https://www.dio.me/" target="_blank" style="color: rgb(255, 0, 191); text-decoration: none;">Dio.me</a> |
+            <a href="https://www.youtube.com/watch?v=jVxxKYlSDNk" target="_blank" style="color: rgb(255, 0, 191); text-decoration: none;">YouTube</a> |
+        </p>
+    </footer>
+</body>
+</html>
